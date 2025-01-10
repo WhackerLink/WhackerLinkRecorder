@@ -88,10 +88,17 @@ function handleNetwork(network) {
 
     peer.on('audioData', (audioPacket) => {
         const { SrcId, DstId } = audioPacket.voiceChannel;
+        const talkgroupDir = `${networkDir}/${DstId}`;
+
+        if (!fs.existsSync(talkgroupDir)) {
+            fs.mkdirSync(talkgroupDir, { recursive: true });
+            console.log(`[${network.name}] Created directory for talkgroup: ${DstId}`);
+        }
+
         const streamKey = `${network.name}-${SrcId}-${DstId}`;
 
         if (!activeStreams.has(streamKey)) {
-            const fileName = `${networkDir}/transmission_${SrcId}_${DstId}_${Date.now()}.wav`;
+            const fileName = `${talkgroupDir}/transmission_${SrcId}_${Date.now()}.wav`;
             const fileStream = fs.createWriteStream(fileName);
             const wavWriter = new wav.Writer({
                 sampleRate: 8000,
