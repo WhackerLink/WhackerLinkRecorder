@@ -23,7 +23,7 @@ import wav from 'wav';
 import yaml from 'js-yaml';
 import { readFileSync } from 'fs';
 import yargs from 'yargs';
-import { hideBin } from 'yargs/helpers'
+import { hideBin } from 'yargs/helpers';
 
 const argv = yargs(hideBin(process.argv))
     .option('config', {
@@ -37,6 +37,7 @@ const argv = yargs(hideBin(process.argv))
     .argv;
 
 let config;
+
 try {
     const configFile = readFileSync(argv.config, 'utf8');
     config = yaml.load(configFile);
@@ -50,9 +51,9 @@ if (!config.networks || !Array.isArray(config.networks) || config.networks.lengt
     process.exit(1);
 }
 
-const baseRecordingsDir = 'recordings';
+const baseRecordingsDir = config.baseDirectory || 'recordings';
 if (!fs.existsSync(baseRecordingsDir)) {
-    fs.mkdirSync(baseRecordingsDir);
+    fs.mkdirSync(baseRecordingsDir, { recursive: true });
 }
 
 const activeStreams = new Map();
@@ -65,7 +66,7 @@ function handleNetwork(network) {
 
     const networkDir = `${baseRecordingsDir}/${network.name}`;
     if (!fs.existsSync(networkDir)) {
-        fs.mkdirSync(networkDir);
+        fs.mkdirSync(networkDir, { recursive: true });
     }
 
     const peer = new Peer();
@@ -90,7 +91,7 @@ function handleNetwork(network) {
         const streamKey = `${network.name}-${SrcId}-${DstId}`;
 
         if (!activeStreams.has(streamKey)) {
-            const fileName = `${networkDir}/audio_${SrcId}_${DstId}_${Date.now()}.wav`;
+            const fileName = `${networkDir}/transmission_${SrcId}_${DstId}_${Date.now()}.wav`;
             const fileStream = fs.createWriteStream(fileName);
             const wavWriter = new wav.Writer({
                 sampleRate: 8000,

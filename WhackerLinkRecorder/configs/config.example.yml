@@ -1,0 +1,19 @@
+# Base location for recordings
+# Full path; example: /home/user/user/recordings
+baseDirectory: "recordings"
+
+# List of networks
+networks:
+  # Textual network name
+  - name: "Network 1"
+    # Address of master
+    address: "localhost"
+    # Port of master
+    port: 3000
+
+  # Textual network name
+  - name: "Network 2"
+    # Address of master
+    address: "192.168.1.2"
+    # Port of master
+    port: 3010
