@@ -1,0 +1,104 @@
+<!--
+ * WhackerLink - WhackerLinkRecorder
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Copyright (C) 2025 Caleb, K4PHP
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhackerLink Recordings</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container">
+    <h1 class="text-center my-4">WhackerLink Recordings</h1>
+
+    <div class="mb-4">
+        <label for="network-filter" class="form-label">Filter by Network:</label>
+        <select id="network-filter" class="form-select">
+            <option value="all">All Networks</option>
+            <% networks.forEach(network => { %>
+                <option value="<%= network.name %>"><%= network.name %></option>
+            <% }); %>
+        </select>
+    </div>
+
+    <div class="accordion" id="networksAccordion">
+        <% networks.forEach((network, networkIndex) => { %>
+            <div class="accordion-item network-recordings" data-network="<%= network.name %>">
+                <h2 class="accordion-header" id="heading<%= networkIndex %>">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse<%= networkIndex %>" aria-expanded="true" aria-controls="collapse<%= networkIndex %>">
+                        <%= network.name %>
+                    </button>
+                </h2>
+                <div id="collapse<%= networkIndex %>" class="accordion-collapse collapse" aria-labelledby="heading<%= networkIndex %>" data-bs-parent="#networksAccordion">
+                    <div class="accordion-body">
+                        <div class="accordion" id="talkgroupsAccordion<%= networkIndex %>">
+                            <% network.talkgroups.forEach((talkgroup, talkgroupIndex) => { %>
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="talkgroupHeading<%= networkIndex %>_<%= talkgroupIndex %>">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#talkgroupCollapse<%= networkIndex %>_<%= talkgroupIndex %>" aria-expanded="false" aria-controls="talkgroupCollapse<%= networkIndex %>_<%= talkgroupIndex %>">
+                                            Talkgroup: <%= talkgroup.name %>
+                                        </button>
+                                    </h2>
+                                    <div id="talkgroupCollapse<%= networkIndex %>_<%= talkgroupIndex %>" class="accordion-collapse collapse" aria-labelledby="talkgroupHeading<%= networkIndex %>_<%= talkgroupIndex %>" data-bs-parent="#talkgroupsAccordion<%= networkIndex %>">
+                                        <div class="accordion-body">
+                                            <% talkgroup.recordings.forEach(recording => { %>
+                                                <div class="card mb-3">
+                                                    <div class="card-body">
+                                                        <h5 class="card-title">Radio ID: <%= recording.radioId %></h5>
+                                                        <audio controls class="w-100">
+                                                            <source src="<%= recording.path %>" type="audio/wav">
+                                                            Your browser does not support the audio element.
+                                                        </audio>
+                                                    </div>
+                                                </div>
+                                            <% }); %>
+                                        </div>
+                                    </div>
+                                </div>
+                            <% }); %>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <% }); %>
+    </div>
+</div>
+
+<script>
+    const networkFilter = document.getElementById('network-filter');
+    const networkSections = document.querySelectorAll('.network-recordings');
+
+    function filterNetworks() {
+        const selectedNetwork = networkFilter.value;
+        networkSections.forEach(section => {
+            const networkName = section.dataset.network;
+            section.style.display = (selectedNetwork === 'all' || selectedNetwork === networkName) ? 'block' : 'none';
+        });
+    }
+
+    networkFilter.addEventListener('change', filterNetworks);
+
+    filterNetworks();
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

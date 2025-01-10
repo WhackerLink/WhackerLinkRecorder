@@ -1,5 +1,5 @@
 /**
- * WhackerLink - WhackerLinkLibJS
+ * WhackerLink - WhackerLinkRecorder
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@ import { readFileSync } from 'fs';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { NetworkRecorder } from './NetworkRecorder.js';
+import {WebServer} from "./web/WebServer.js";
 
 const argv = yargs(hideBin(process.argv))
     .option('config', {
@@ -57,3 +58,8 @@ if (!fs.existsSync(baseRecordingsDir)) {
 
 const networkRecorder = new NetworkRecorder(baseRecordingsDir);
 config.networks.forEach(network => networkRecorder.addNetwork(network));
+
+if (config.web && config.web.enabled) {
+    const webServer = new WebServer(baseRecordingsDir, config.web.port);
+    webServer.start();
+}

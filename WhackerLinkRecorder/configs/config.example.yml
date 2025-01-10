@@ -2,6 +2,13 @@
 # Full path; example: /home/user/user/recordings
 baseDirectory: "recordings"
 
+# Web Interface
+web:
+  # Enables the web interface
+  enabled: true
+  # Port to bind web interface to
+  port: 3050
+
 # List of networks
 networks:
   # Textual network name
