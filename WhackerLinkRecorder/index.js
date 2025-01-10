@@ -17,13 +17,12 @@
  * Copyright (C) 2025 Caleb, K4PHP
  */
 
-import { Peer } from '../WhackerLinkLibJS/Peer.js';
 import fs from 'fs';
-import wav from 'wav';
 import yaml from 'js-yaml';
 import { readFileSync } from 'fs';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
+import { NetworkRecorder } from './NetworkRecorder.js';
 
 const argv = yargs(hideBin(process.argv))
     .option('config', {
@@ -56,80 +55,5 @@ if (!fs.existsSync(baseRecordingsDir)) {
     fs.mkdirSync(baseRecordingsDir, { recursive: true });
 }
 
-const activeStreams = new Map();
-
-function handleNetwork(network) {
-    if (!network.address || !network.port || !network.name) {
-        console.error(`Invalid network configuration: ${JSON.stringify(network)}`);
-        return;
-    }
-
-    const networkDir = `${baseRecordingsDir}/${network.name}`;
-    if (!fs.existsSync(networkDir)) {
-        fs.mkdirSync(networkDir, { recursive: true });
-    }
-
-    const peer = new Peer();
-
-    peer.on('open', () => {
-        console.log(`Connected to ${network.name} (${network.address}:${network.port})`);
-    });
-
-    peer.on('close', () => {
-        console.log(`Connection closed for ${network.name}.`);
-        activeStreams.forEach((stream, key) => {
-            if (key.startsWith(network.name)) {
-                stream.writer.end();
-                console.log(`Stream for ${key} closed.`);
-                activeStreams.delete(key);
-            }
-        });
-    });
-
-    peer.on('audioData', (audioPacket) => {
-        const { SrcId, DstId } = audioPacket.voiceChannel;
-        const talkgroupDir = `${networkDir}/${DstId}`;
-
-        if (!fs.existsSync(talkgroupDir)) {
-            fs.mkdirSync(talkgroupDir, { recursive: true });
-            console.log(`[${network.name}] Created directory for talkgroup: ${DstId}`);
-        }
-
-        const streamKey = `${network.name}-${SrcId}-${DstId}`;
-
-        if (!activeStreams.has(streamKey)) {
-            const fileName = `${talkgroupDir}/transmission_${SrcId}_${Date.now()}.wav`;
-            const fileStream = fs.createWriteStream(fileName);
-            const wavWriter = new wav.Writer({
-                sampleRate: 8000,
-                bitDepth: 16,
-                channels: 1,
-            });
-
-            wavWriter.pipe(fileStream);
-            activeStreams.set(streamKey, { writer: wavWriter, lastDataTime: Date.now() });
-            console.log(`[${network.name}] Started recording stream: ${streamKey}`);
-        }
-
-        const stream = activeStreams.get(streamKey);
-        stream.writer.write(audioPacket.data);
-        stream.lastDataTime = Date.now();
-    });
-
-    setInterval(() => {
-        const now = Date.now();
-        const timeout = 2500;
-
-        activeStreams.forEach((stream, key) => {
-            if (key.startsWith(network.name) && now - stream.lastDataTime > timeout) {
-                stream.writer.end();
-                console.log(`[${network.name}] Ended recording stream: ${key}`);
-                activeStreams.delete(key);
-            }
-        });
-    }, 1000);
-
-    peer.connect(network.address, network.port);
-}
-
-config.networks.forEach(handleNetwork);
+const networkRecorder = new NetworkRecorder(baseRecordingsDir);
+config.networks.forEach(network => networkRecorder.addNetwork(network));
