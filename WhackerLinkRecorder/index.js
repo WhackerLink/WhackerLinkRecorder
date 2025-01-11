@@ -57,7 +57,11 @@ if (!fs.existsSync(baseRecordingsDir)) {
 }
 
 const networkRecorder = new NetworkRecorder(baseRecordingsDir);
-config.networks.forEach(network => networkRecorder.addNetwork(network));
+const delayBetweenConnections = 2000;
+
+config.networks.forEach((network, index) => {
+    setTimeout(() => networkRecorder.addNetwork(network), index * delayBetweenConnections);
+});
 
 if (config.web && config.web.enabled) {
     const webServer = new WebServer(baseRecordingsDir, config.web.port);
