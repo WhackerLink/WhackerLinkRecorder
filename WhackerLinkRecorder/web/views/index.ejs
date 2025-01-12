@@ -29,6 +29,11 @@
 <div class="container">
     <h1 class="text-center my-4">WhackerLink Recordings</h1>
 
+    <div class="form-check form-switch mb-3">
+        <input class="form-check-input" type="checkbox" id="autoPlayToggle">
+        <label class="form-check-label" for="autoPlayToggle">Auto Play Next</label>
+    </div>
+
     <div class="mb-4">
         <label for="network-filter" class="form-label">Filter by Network:</label>
         <select id="network-filter" class="form-select">
@@ -61,12 +66,12 @@
                                         <div class="accordion-body">
                                             <%
                                                 talkgroup.recordings.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-                                                talkgroup.recordings.forEach(recording => {
+                                            talkgroup.recordings.forEach((recording, recordingIndex) => {
                                             %>
                                                 <div class="card mb-3">
                                                     <div class="card-body">
                                                         <h5 class="card-title">Radio ID: <%= recording.radioId %></h5>
-                                                        <audio controls class="w-100">
+                                                        <audio controls class="w-100" data-network="<%= network.name %>" data-talkgroup="<%= talkgroup.name %>" data-index="<%= recordingIndex %>">
                                                             <source src="<%= recording.path %>" type="audio/wav">
                                                             Your browser does not support the audio element.
                                                         </audio>
@@ -88,6 +93,7 @@
 <script>
     const networkFilter = document.getElementById('network-filter');
     const networkSections = document.querySelectorAll('.network-recordings');
+    const autoPlayToggle = document.getElementById('autoPlayToggle');
 
     function filterNetworks() {
         const selectedNetwork = networkFilter.value;
@@ -98,8 +104,33 @@
     }
 
     networkFilter.addEventListener('change', filterNetworks);
-
     filterNetworks();
+
+    function setupAutoPlay() {
+        const audioElements = document.querySelectorAll('audio');
+        audioElements.forEach((audio, index) => {
+            audio.addEventListener('ended', () => {
+                if (!autoPlayToggle.checked) return;
+
+                const currentTalkgroup = audio.dataset.talkgroup;
+
+                let nextAudio = null;
+                for (let i = index + 1; i < audioElements.length; i++) {
+                    if (audioElements[i].dataset.talkgroup === currentTalkgroup) {
+                        nextAudio = audioElements[i];
+                        break;
+                    }
+                }
+
+                if (nextAudio) {
+                    nextAudio.play();
+                    nextAudio.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            });
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', setupAutoPlay);
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
