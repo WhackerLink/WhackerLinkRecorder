@@ -19,7 +19,7 @@
 
 import express from 'express';
 import path from 'path';
-import { readdirSync, readFileSync } from 'fs';
+import { readdirSync, readFileSync, statSync } from 'fs';
 
 export class WebServer {
     constructor(baseRecordingsDir, port) {
@@ -48,15 +48,26 @@ export class WebServer {
                 const recordings = readdirSync(path.join(this.baseRecordingsDir, network, talkgroup))
                     .filter(file => file.endsWith('.wav'))
                     .map(file => {
-                        // Extract Radio ID (SrcId) from the filename or metadata
-                        const [srcId] = file.match(/\d+/) || ['Unknown'];
-                        return {
-                            talkgroup,
-                            radioId: srcId,
-                            file,
-                            path: `/recordings/${network}/${talkgroup}/${file}`,
-                        };
-                    });
+                        try {
+                            const filePath = path.join(this.baseRecordingsDir, network, talkgroup, file);
+                            const fileStats = statSync(filePath);
+                            const timestamp = fileStats.mtime.getTime();
+                            const [srcId] = file.match(/\d+/) || ['Unknown'];
+                            return {
+                                talkgroup,
+                                radioId: srcId,
+                                file,
+                                timestamp,
+                                path: `/recordings/${network}/${talkgroup}/${file}`,
+                            };
+                        } catch (err) {
+                            console.error(`Error reading file: ${file}`, err);
+                            return null;
+                        }
+                    })
+                    .filter(recording => recording)
+                    .sort((a, b) => a.timestamp - b.timestamp);
+
                 return { name: talkgroup, recordings };
             });
 
@@ -70,11 +81,16 @@ export class WebServer {
 
     start() {
         this.app.get('/', (req, res) => {
-            const networks = this.getNetworks();
-            res.render('index', { networks });
+            try {
+                const networks = this.getNetworks();
+                res.render('index', { networks });
+            } catch (err) {
+                console.error('Error rendering the page:', err);
+                res.status(500).send('An error occurred while loading the recordings.');
+            }
         });
 
-        this.app.listen(this.port, "0.0.0.0" ,() => {
+        this.app.listen(this.port, '0.0.0.0', () => {
             console.log(`WebServer running at http://0.0.0.0:${this.port}`);
         });
     }

@@ -59,7 +59,10 @@
                                     </h2>
                                     <div id="talkgroupCollapse<%= networkIndex %>_<%= talkgroupIndex %>" class="accordion-collapse collapse" aria-labelledby="talkgroupHeading<%= networkIndex %>_<%= talkgroupIndex %>" data-bs-parent="#talkgroupsAccordion<%= networkIndex %>">
                                         <div class="accordion-body">
-                                            <% talkgroup.recordings.forEach(recording => { %>
+                                            <%
+                                                talkgroup.recordings.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+                                                talkgroup.recordings.forEach(recording => {
+                                            %>
                                                 <div class="card mb-3">
                                                     <div class="card-body">
                                                         <h5 class="card-title">Radio ID: <%= recording.radioId %></h5>
