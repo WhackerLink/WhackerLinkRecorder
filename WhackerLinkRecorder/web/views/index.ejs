@@ -108,7 +108,16 @@
 
     function setupAutoPlay() {
         const audioElements = document.querySelectorAll('audio');
+
         audioElements.forEach((audio, index) => {
+            audio.addEventListener('play', () => {
+                audioElements.forEach(otherAudio => {
+                    if (otherAudio !== audio) {
+                        otherAudio.pause();
+                    }
+                });
+            });
+
             audio.addEventListener('ended', () => {
                 if (!autoPlayToggle.checked) return;
 
