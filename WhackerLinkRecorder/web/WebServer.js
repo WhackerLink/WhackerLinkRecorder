@@ -19,70 +19,93 @@
 
 import express from 'express';
 import path from 'path';
-import { readdirSync, readFileSync, statSync } from 'fs';
+import { promises as fs } from 'fs';
 
 export class WebServer {
     constructor(baseRecordingsDir, port) {
         this.baseRecordingsDir = baseRecordingsDir;
         this.app = express();
         this.port = port;
+        this.cache = {
+            networks: [],
+            lastUpdated: 0
+        };
 
         this.app.set('view engine', 'ejs');
         this.app.set('views', path.join(process.cwd(), 'web', 'views'));
 
         this.app.use('/recordings', express.static(this.baseRecordingsDir));
+
+        setInterval(() => this.updateCache(), 5000);
     }
 
-    getNetworks() {
-        const networks = [];
-        const networkDirs = readdirSync(this.baseRecordingsDir, { withFileTypes: true })
-            .filter(dir => dir.isDirectory())
-            .map(dir => dir.name);
+    async getNetworks() {
+        if (Date.now() - this.cache.lastUpdated < 5000) {
+            return this.cache.networks;
+        }
+        return await this.updateCache();
+    }
 
-        for (const network of networkDirs) {
-            const talkgroups = readdirSync(path.join(this.baseRecordingsDir, network), { withFileTypes: true })
-                .filter(dir => dir.isDirectory())
-                .map(dir => dir.name);
+    async updateCache() {
+        try {
+            const networkDirs = await fs.readdir(this.baseRecordingsDir, { withFileTypes: true });
+            const networks = [];
 
-            const talkgroupData = talkgroups.map(talkgroup => {
-                const recordings = readdirSync(path.join(this.baseRecordingsDir, network, talkgroup))
-                    .filter(file => file.endsWith('.wav'))
-                    .map(file => {
+            for (const dir of networkDirs) {
+                if (!dir.isDirectory()) continue;
+                const networkName = dir.name;
+                const networkPath = path.join(this.baseRecordingsDir, networkName);
+
+                const talkgroups = await fs.readdir(networkPath, { withFileTypes: true });
+                const talkgroupData = [];
+
+                for (const tgDir of talkgroups) {
+                    if (!tgDir.isDirectory()) continue;
+                    const talkgroupName = tgDir.name;
+                    const tgPath = path.join(networkPath, talkgroupName);
+
+                    const files = await fs.readdir(tgPath);
+                    const recordings = [];
+
+                    for (const file of files) {
+                        if (!file.endsWith('.wav')) continue;
                         try {
-                            const filePath = path.join(this.baseRecordingsDir, network, talkgroup, file);
-                            const fileStats = statSync(filePath);
+                            const filePath = path.join(tgPath, file);
+                            const fileStats = await fs.stat(filePath);
                             const timestamp = fileStats.mtime.getTime();
                             const [srcId] = file.match(/\d+/) || ['Unknown'];
-                            return {
-                                talkgroup,
+                            recordings.push({
+                                talkgroup: talkgroupName,
                                 radioId: srcId,
                                 file,
                                 timestamp,
-                                path: `/recordings/${network}/${talkgroup}/${file}`,
-                            };
+                                path: `/recordings/${networkName}/${talkgroupName}/${file}`
+                            });
                         } catch (err) {
                             console.error(`Error reading file: ${file}`, err);
-                            return null;
                         }
-                    })
-                    .filter(recording => recording)
-                    .sort((a, b) => a.timestamp - b.timestamp);
+                    }
 
-                return { name: talkgroup, recordings };
-            });
+                    recordings.sort((a, b) => b.timestamp - a.timestamp);
+                    talkgroupData.push({ name: talkgroupName, recordings });
+                }
 
-            networks.push({
-                name: network,
-                talkgroups: talkgroupData,
-            });
+                networks.push({ name: networkName, talkgroups: talkgroupData });
+            }
+
+            this.cache.networks = networks;
+            this.cache.lastUpdated = Date.now();
+            return networks;
+        } catch (err) {
+            console.error("Error updating cache:", err);
+            return [];
         }
-        return networks;
     }
 
     start() {
-        this.app.get('/', (req, res) => {
+        this.app.get('/', async (req, res) => {
             try {
-                const networks = this.getNetworks();
+                const networks = await this.getNetworks();
                 res.render('index', { networks });
             } catch (err) {
                 console.error('Error rendering the page:', err);
@@ -93,5 +116,7 @@ export class WebServer {
         this.app.listen(this.port, '0.0.0.0', () => {
             console.log(`WebServer running at http://0.0.0.0:${this.port}`);
         });
+
+        this.updateCache().then(r => {});
     }
 }
