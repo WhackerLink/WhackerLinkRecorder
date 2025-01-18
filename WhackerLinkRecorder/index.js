@@ -22,7 +22,7 @@ import yaml from 'js-yaml';
 import { readFileSync } from 'fs';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import { NetworkRecorder } from './NetworkRecorder.js';
+import { Worker } from 'worker_threads';
 import {WebServer} from "./web/WebServer.js";
 
 const argv = yargs(hideBin(process.argv))
@@ -56,11 +56,24 @@ if (!fs.existsSync(baseRecordingsDir)) {
     fs.mkdirSync(baseRecordingsDir, { recursive: true });
 }
 
-const networkRecorder = new NetworkRecorder(baseRecordingsDir);
-const delayBetweenConnections = 2000;
-
 config.networks.forEach((network, index) => {
-    setTimeout(() => networkRecorder.addNetwork(network), index * delayBetweenConnections);
+    const worker = new Worker('./workerRecorder.js', {
+        workerData: { baseRecordingsDir, network }
+    });
+
+    worker.on('message', (msg) => {
+        console.log(`[Worker ${index}]`, msg);
+    });
+
+    worker.on('error', (err) => {
+        console.error(`[Worker ${index} Error]`, err);
+    });
+
+    worker.on('exit', (code) => {
+        if (code !== 0) {
+            console.error(`[Worker ${index}] Stopped with exit code ${code}`);
+        }
+    });
 });
 
 if (config.web && config.web.enabled) {

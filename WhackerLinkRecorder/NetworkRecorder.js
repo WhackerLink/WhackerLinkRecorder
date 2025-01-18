@@ -27,7 +27,7 @@ export class NetworkRecorder {
         this.activeStreams = new Map();
     }
 
-    addNetwork(network) {
+    start(network) {
         if (!network.address || !network.port || !network.name) {
             console.error(`Invalid network configuration: ${JSON.stringify(network)}`);
             return;
@@ -45,14 +45,15 @@ export class NetworkRecorder {
         });
 
         peer.on('close', () => {
-            console.log(`Connection closed for ${network.name}.`);
+            console.log(`Connection closed for ${network.name}`);
             this._closeStreamsForNetwork(network.name);
         });
 
-        peer.on('audioData', audioPacket => this._handleAudioData(audioPacket, networkDir, network.name));
+        peer.on('audioData', (audioPacket) => {
+            this._handleAudioData(audioPacket, networkDir, network.name);
+        });
 
         setInterval(() => this._cleanupStreams(network.name), 1000);
-
         peer.connect(network.address, network.port);
     }
 
